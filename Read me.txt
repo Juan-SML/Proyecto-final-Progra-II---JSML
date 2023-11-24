@@ -1,0 +1,305 @@
+
+Documentación del proyecto final - JSML
+
+
+- Librerías:
+
+#include "mainwindow.h"
+#include "ui_mainwindow.h"
+
+
+#include <QFile> 
+//Se encarga de las operaciones de archivos
+
+
+#include <QFileDialog>
+//Se encarga de crear un dialogo para las operaciones relacionadas a archivos
+
+
+#include <QTextStream>
+//Crea un stream para leer y escribir texto
+
+
+#include <QMessageBox>
+//Se encarga de mostrar mensajes estándar de la aplicación
+
+
+#include <QPrinter>
+//Añade la función de imprimir
+
+
+#include <QPrintDialog>
+//Muestra los diálogos para configurar las opciones de impresión
+
+
+#include <QPainter>
+//Se encarga de pintar un cuadro a baja escala en widgets
+
+
+#include <QPdfWriter>
+//Añade la función de crear archivos PDF
+
+
+#include <QTextDocument>
+//Añade la capacidad de representar documentos de texto en distintos formatos
+
+
+#include <QTextDocumentWriter>
+//Añade la función de escribir un archivo desde QTextDocument a otro archivo
+
+
+
+- Funciones:
+
+//Esta parte del código se encarga de configurar e inicializar la UI y sus componenentes.
+
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent)
+    , ui(new Ui::MainWindow)
+{
+    ui->setupUi(this);
+    this->setStyleSheet("background-color: gray;");
+    ui->textEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    ui->textEdit->setStyleSheet("background-color: white; color: black;");
+
+    QWidget* centralWidget = new QWidget(this);
+    QVBoxLayout* centralLayout = new QVBoxLayout(centralWidget);
+    centralLayout->addWidget(ui->textEdit);
+
+    setCentralWidget(centralWidget);
+}
+
+
+
+//Esta función cambia el texto a "", es decir, deja la página en blanco.
+
+ void MainWindow::on_actionNuevo_triggered()
+ {
+     file_path = "";
+     ui->textEdit->setText("");
+ }
+
+
+
+//Esta función guarda todo el texto que se haya escrito en un archivo; si ya se había guardado antes, guardará de nuevo en ese archivo, pero si no se había guardado previamente, llamará a la función "Guardar como" para que el usuario escoja el nombre del archivo y donde lo quiere guardar, además del tipo de archivo.
+
+ void MainWindow::on_actionGuardar_triggered()
+ {
+     if (file_path.isEmpty()) {
+         on_actionGuardar_c_mo_triggered();
+     } else {
+         QFile file(file_path);
+         if (!file.open(QFile::WriteOnly | QFile::Text)) {
+             QMessageBox::warning(this, "Error", "No se abrió el documento");
+                 return;
+         }
+         QTextStream out(&file);
+         QString text = ui->textEdit->toPlainText();
+         out << text;
+         file.flush();
+         file.close();
+     }
+ }
+
+
+
+//Esta función guarda todo el texto que se haya escrito en un archivo, dejando que el usuario nombre el archivo, escoja donde lo quiere guardar, y en qué formato (.pdf, .html y .txt).
+
+ void MainWindow::on_actionGuardar_c_mo_triggered()
+ {
+     QString file_name = QFileDialog::getSaveFileName(this, "Guardar como", QString(), "Archivos de texto (*.txt);;Archivos PDF (*.pdf);;Archivos  HTML (*.html)");
+     if (file_name.isEmpty()) {
+         return;
+     }
+ 
+     QFile file(file_name);
+     file_path = file_name;
+ 
+     if (file_name.endsWith(".pdf")) {
+         QTextDocument textDocument;
+         textDocument.setPlainText(ui->textEdit->toPlainText());
+  
+         QFont font = ui->textEdit->currentFont();
+         font.setPointSize(30);
+         textDocument.setDefaultFont(font);
+ 
+         textDocument.setDefaultStyleSheet("body { color: black; }");
+ 
+         QPdfWriter pdfWriter(file_name);
+         pdfWriter.setPageSize(QPageSize(QPageSize::Letter));
+         pdfWriter.setResolution(300);
+         QPainter painter(&pdfWriter);
+
+         textDocument.drawContents(&painter);
+     } else if (file_name.endsWith(".html")) {
+         QTextDocument textDocument;
+         textDocument.setPlainText(ui->textEdit->toPlainText());
+ 
+         QFont font = ui->textEdit->currentFont();
+         font.setPointSize(15);
+         textDocument.setDefaultFont(font);
+ 
+         QFile htmlFile(file_name);
+         if (htmlFile.open(QFile::WriteOnly | QFile::Text)) {
+                 QTextStream stream(&htmlFile);
+                 stream << "<html>" << Qt::endl;
+                 stream << "<body>" << Qt::endl;
+                 stream << textDocument.toHtml() << Qt::endl;
+                 stream << "</body>" << Qt::endl;
+                 stream << "</html>" << Qt::endl;
+                 htmlFile.close();
+         }
+     } else {
+         QTextDocument textDocument;
+         textDocument.setPlainText(ui->textEdit->toPlainText());
+ 
+         QTextDocumentWriter writer(file_name);
+         bool success = writer.write(&textDocument);
+ 
+         if (!success) {
+                 QMessageBox::warning(this, "Error", "Error al guardar el documento");
+         }
+     }
+ }
+
+
+
+//Esta función se encarga de abrir otros documentos que estén en un formato válido.
+
+ void MainWindow::on_actionAbrir_triggered()
+ {
+     QString file_name = QFileDialog::getOpenFileName(this, "Abre el documento");
+     QFile file(file_name);
+     if(!file.open(QFile::ReadOnly | QFile::Text)) {
+         QMessageBox::warning(this, ". .","el documento no se abrió");
+         return;
+     }
+     QTextStream in(&file);
+     QString  text = in.readAll();
+     ui->textEdit->setText(text);
+     file.close();
+ }
+
+
+
+//Esta función se encarga de abrir un menú donde se puede cambiar la fuente y el tamaño del texto.
+
+ void MainWindow::on_actionCambiar_fuente_triggered()
+ {
+     bool ok;
+     QFont font = QFontDialog::getFont(&ok, QFont("Arial", 12), this); 
+
+     if (ok) {
+        ui->textEdit->setFont(font);
+     }
+ }
+
+
+
+//Esta función abre el menú de impresión, donde se pueden cambiar los ajustes antes de imprimir la página.
+
+ void MainWindow::on_actionImprimir_triggered()
+ {
+     QPrinter printer;
+     QPrintDialog printDialog(&printer, this); 
+
+     if (printDialog.exec() == QDialog::Accepted) {
+                 QPainter painter(&printer);
+                 ui->textEdit->render(&painter);
+     }
+ }
+
+
+
+//Estas funciones se encargan de alinear el texto al centro, a la izquierda y a la derecha respectivamente.
+
+ void MainWindow::on_actionCentrar_triggered()
+ {
+     QTextCursor cursor = ui->textEdit->textCursor();
+     QTextBlockFormat blockFormat = cursor.blockFormat();
+     blockFormat.setAlignment(Qt::AlignCenter);
+     cursor.setBlockFormat(blockFormat);
+     ui->textEdit->setTextCursor(cursor);
+ }
+
+ void MainWindow::on_actionAlinear_a_la_izquierda_triggered()
+ {
+     QTextCursor cursor = ui->textEdit->textCursor();
+     QTextBlockFormat blockFormat = cursor.blockFormat();
+     blockFormat.setAlignment(Qt::AlignLeft);
+     cursor.setBlockFormat(blockFormat);
+     ui->textEdit->setTextCursor(cursor);
+ }
+
+ void MainWindow::on_actionAlinear_a_la_derecha_triggered()
+ {
+     QTextCursor cursor = ui->textEdit->textCursor();
+     QTextBlockFormat blockFormat = cursor.blockFormat();
+     blockFormat.setAlignment(Qt::AlignRight);
+     cursor.setBlockFormat(blockFormat);
+     ui->textEdit->setTextCursor(cursor);
+ }
+
+
+
+//Estas funciones por defecto de Qt se encargan de: salir de la aplicación, copiar, pegar y cortar texto y deshacer/rehacer acciones del usuario.
+
+void MainWindow::on_actionSalir_triggered()
+{
+    QApplication::quit();
+}
+
+void MainWindow::on_actionPegar_triggered()
+{
+    ui->textEdit->paste();
+}
+
+void MainWindow::on_actionRehacer_triggered()
+{
+    ui->textEdit->redo();
+}
+
+void MainWindow::on_actionDeshacer_triggered()
+{
+    ui->textEdit->undo();
+}
+
+void MainWindow::on_actionCopiar_triggered()
+{
+    ui->textEdit->copy();
+}
+
+void MainWindow::on_actionCortar_triggered()
+{
+    ui->textEdit->cut();
+}
+
+
+
+//Esta función muestra un cuadro de texto con algo de información acerca de la aplicación
+
+void MainWindow::on_actionAcerca_de_este_programa_triggered()
+{
+    QString acerca_de_text;
+    acerca_de_text  = "Autor : Juan Sebastián Mira L.\n";
+    acerca_de_text += "\nFecha de creación: 23/10/23";
+
+    QMessageBox::about(this,"Acerca de este programa",acerca_de_text);
+}
+
+
+- Arquitectura de la aplicación:
+
+La aplicación consta de un cuadro de texto en blanco que ocupa todo el centro de la pantalla, donde el usuario puede escribir. 
+Encima de este cuadro de texto se encuentra una barra de herramientas, donde el usuario puede acceder a varias funciones ya sea para editar el texto, o el archivo en el que está guardando todo lo que haya escrito.
+
+En orden de izquierda a derecha, la barra de herramientas contiene las funciones para crear un nuevo documento en blanco, abrir un documento ya existente, guardar su progreso, guardar un nuevo documento, copiar texto, pegar texto, cambiar la fuente y tamaño del texto, deshacer una acción, rehacer una acción, alinear el texto a la izquierda, centrar el texto, alinear el texto a la derecha e imprimir.
+
+En la parte superior de la ventana se encuentran los menús donde el usuario también puede acceder a las funciones ya mencionadas.
+"Archivo" incluye todo lo relacionado a guardar, modificar o imprimir archivos, además de la opción de salir de la aplicación.
+"Editar" incluye todo lo relacionado a modificar lo que haya en el cuadro texto, es decir, copiar/pegar/cortar y deshacer/rehacer.
+"Texto" incluye todo lo relacionado a ajustar el texto, como son las funciones de alinear el texto o cambiar la fuente.
+"Acerca de" lleva a un mensaje donde se incluye algo de información sobre la creación de la aplicación.
+
+
+
