@@ -103,7 +103,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 
 
-//Esta función guarda todo el texto que se haya escrito en un archivo, dejando que el usuario nombre el archivo, escoja donde lo quiere guardar, y en qué formato (.pdf, .html y .txt).
+//Esta función crea un archivo en el que guardar todo el texto, dejando que el usuario nombre el archivo, escoja donde lo quiere guardar, y en qué formato (.pdf, .html y .txt).
 
  void MainWindow::on_actionGuardar_c_mo_triggered()
  {
